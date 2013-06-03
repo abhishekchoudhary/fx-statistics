@@ -2,8 +2,8 @@
   "name": "fx-statistics",
   "fullName": "fx-statistics",
   "id": "jid1-jnK9rw3l4bxjZQ",
-  "description": "a basic add-on",
-  "author": "",
+  "description": "Browser statistics that you can actually understand.",
+  "author": "Abhishek Choudhary",
   "license": "MPL 2.0",
   "version": "0.1"
 }
