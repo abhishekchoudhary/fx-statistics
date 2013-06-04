@@ -3,7 +3,7 @@ Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 Cu.import("resource://gre/modules/Services.jsm");
 
 function startup(data, reason) {
-  Components.manager.addBootstrapedManifestLocation(data.installPath);
+  Components.manager.addBootstrappedManifestLocation(data.installPath);
   AboutStats.register();
 }
 
