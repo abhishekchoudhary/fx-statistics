@@ -37,7 +37,7 @@ const AboutStats = {
       throw Components.results.NS_ERROR_NO_AGGREGATION;
     }
     return this.QueryInterface(iid);
-  }
+  },
   
   register: function register() {
     let registrar = Components.manager.QueryInterface(Ci.nsIComponentRegistrar);
