@@ -1,8 +1,10 @@
 {
-  "name": "fx-statistics",
+  "name": "fx-stats",
   "fullName": "fx-statistics",
+  "dependencies":["about","addon-sdk"],
   "id": "jid1-jnK9rw3l4bxjZQ",
   "description": "Browser statistics that you can actually understand.",
+  "permissions": {"private-browsing": true},
   "author": "Abhishek Choudhary",
   "license": "MPL 2.0",
   "version": "0.1"
