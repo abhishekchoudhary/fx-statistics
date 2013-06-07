@@ -1,0 +1,11 @@
+html {
+  background: -moz-Dialog;
+  font: message-box;
+}
+
+body {
+  padding: 0 2em;
+  margin: 0;
+  min-width: 45em;
+  margin: auto;
+}
