@@ -11,7 +11,7 @@ function shutdown(data, reason) {
   if (reason == APP_SHUTDOWN) {
     return;
   }
-  AboutStatistics.unload();
+  AboutStats.unload();
   Components.manager.removeBootstrappedManifestLocation(data.installPath);
 }
 
