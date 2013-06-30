@@ -2,10 +2,10 @@ const{classes: Cc, interfaces: Ci, utils: Cu} = Components;
 Cu.import("resource://gre/modules/Services.jsm");
 Cu.import("resource://gre/modules/XPCOMUtils.jsm");
 
-function loader() {
+function onLoad() {
   alert("works");
 }
 
-function unloader() {
+function onUnload() {
 
 }

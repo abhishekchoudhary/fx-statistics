@@ -1,9 +1,6 @@
-html {
-  background: -moz-Dialog;
-  font: message-box;
-}
-
 body {
+  background: #000000;
+  font: message-box;
   padding: 0 2em;
   margin: 0;
   min-width: 45em;
