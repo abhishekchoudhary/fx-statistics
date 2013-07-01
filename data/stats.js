@@ -1,11 +1,10 @@
-const{classes: Cc, interfaces: Ci, utils: Cu} = Components;
-Cu.import("resource://gre/modules/Services.jsm");
-Cu.import("resource://gre/modules/XPCOMUtils.jsm");
+function populateTemplate(statsBlocks, styleCss, statsFullName, statsTagLine) {
+  if (!document.getElementById("stats-h1"))
+    return;
 
-function onLoad() {
-  alert("works");
-}
-
-function onUnload() {
-
+  document.title = unescape(statsFullName);
+  document.getElementById("stats-h1").textContext = unescape(statsFullName);
+  document.getElementById("stats-h2").textContext = unescape(statsTagLine);
+  document.getElementById("stats-blocks").innerHTML = unescape(statsBlocks);
+  document.getElementById("stats-stylesheet").href = unescape(styleCss);
 }
