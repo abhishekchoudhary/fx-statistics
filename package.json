@@ -1,7 +1,7 @@
 {
   "name": "fx-stats",
   "fullName": "fx-statistics",
-  "dependencies":["about","addon-sdk"],
+  "dependencies":["about","addon-sdk","toolbarbutton"],
   "id": "jid1-jnK9rw3l4bxjZQ",
   "description": "Browser statistics that you can actually understand.",
   "permissions": {"private-browsing": true},
