@@ -4,6 +4,6 @@ function populate(styleCss, statsFullName, statsTagLine) {
 
   document.title = unescape(statsFullName);
   document.getElementById("stats-h1").textContext = unescape(statsFullName);
-  document.getElementById("stats-h2").textContext = unescape(statsTagLine);
+  //document.getElementById("stats-h2").textContext = unescape(statsTagLine);
   document.getElementById("stat-stylesheet").href = unescape(styleCss);
 }
