@@ -3,7 +3,7 @@
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>  
   <link rel="stylesheet" id="stat-stylesheet"/>
   <script type="text/javascript">
-  d3 = function() {
+  window.d3 = function() {
   var d3 = {
     version: "3.1.10"
   };
@@ -8599,8 +8599,7 @@
     </header>
   </div>
   <script type="text/javascript">
-    console.log(JSON.stringify(d3));
-    /*var initCanvas = d3.select("body")
+    var initCanvas = d3.select("body")
                       .append("svg")
                       .attr("width", 500)
                       .attr("height", 300);
@@ -8608,6 +8607,6 @@
     var circle = initCanvas.append("circle")
                   .attr("cx", 250)
                   .attr("cy", 150)
-                  .attr("fill", "black");*/
+                  .attr("fill", "black");
   </script>
 </body>
