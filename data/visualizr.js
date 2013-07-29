@@ -1,79 +1,116 @@
-d3.select("body").append("p").text("I work, for sure.");
-/*
-var canvas = d3.select("body")
-  .append("svg")
-  .attr("width", 500)
-  .attr("height", 500);
+var name = d3.select("#wrapper")
+  .append("p")
+  .style("font-size", "30px")
+  .style("font-weight","bold")
+  .text("Firefox Statistics");
 
-var group = canvas.append("g")
-  .attr("transform", "translate(100,100)");
+self.on("message", function(transmission) {
+  var width = 1000,
+      height = 500,
+      rad = 150;
+      innerRad = 50;
 
-var r = 200;
+  var color = d3.scale.category20();
 
-var dataArray = [];
-self.on("message", function(message) {
-
-var arc = d3.svg.arc()
-  .innerRadius(r - 25)
-  .outerRadius(r);
-
-var arcs = group.selectAll(".arc")
-  .data(pie(message))
-  .enter()
-  .append("g")
-  .attr("class", "arc");
-
-arcs.append("path")
-  .attr("d", arc);
-
-var pie = d3.layout.pie()
-  .value(function(d) { return d.amount; });
-});*/
-self.on("message", function(message) {
-var width = 500,
-    height = 500,
-    rad = 200;
-
-var color = d3.scale.category20c();     //built-in colors
+  var memData = transmission["memdata"],
+      tabData = transmission["tabdata"];
  
-data = [{"label":"one", "value":20}, 
-        {"label":"two", "value":50}, 
-        {"label":"three", "value":30}];
-    
-var vis = d3.select("body")
-  .append("svg:svg")              //create the SVG element inside the <body>
-  .data([message])                   //associate our data with the document
-  .attr("width", width)           //set the width and height of our visualization (these will be attributes of the <svg> tag
-  .attr("height", height)
-    .append("svg:g")                //make a group to hold our pie chart
-    .attr("transform", "translate(" + rad + "," + rad + ")")    //move the center of the pie chart from 0, 0 to radius, radius
+  /*var canvas = d3.select("#wrapper")
+    .append("svg:svg")
+    .data([memData])
+    .attr("width", width)
+    .attr("height", height)
+      .append("svg:g")
+      .attr("transform", "translate(" + width/4 + "," + height/2 + ")");*/
+
+  var canvas = d3.select("#wrapper")
+    .append("svg:svg")
+    .attr("width", width)
+    .attr("height", height);
+
+  var vis1 = canvas.data([memData])
+    .append("svg:g")
+    .attr("transform", "translate(" + width/4 + "," + height/2 + ")");
  
-var arc = d3.svg.arc()              //this will create <path> elements for us using arc data
-  .outerRadius(rad);
+  var arc = d3.svg.arc()              //this will create <path> elements for us using arc data
+    .outerRadius(rad)
+    .innerRadius(innerRad);
+
+  var outline = d3.svg.arc()
+    .outerRadius(rad+3)
+    .innerRadius(rad);
  
-var pie = d3.layout.pie()           //this will create arc data for us given a list of values
-  .value(function(d) { return d.amount; });    //we must tell it out to access the value of each element in our data array
+  var pie = d3.layout.pie()           //this will create arc data for us given a list of values
+    .value(function(block) { return block.amount; });
  
-var arcs = vis.selectAll("g.slice")     //this selects all <g> elements with class slice (there aren't any yet)
-  .data(pie)                          //associate the generated pie data (an array of arcs, each having startAngle, endAngle and value properties) 
-  .enter()                            /*this will create <g> elements for every "extra" data element that should be associated with a selection.
+  var arcs = vis1.selectAll("g.slice")
+    .data(pie)                          //associate the generated pie data
+    .enter()                            /*this will create <g> elements for every "extra" data element that should be associated with a selection.
                                       The result is creating a <g> for every object in the data array*/
-  .append("svg:g")                //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
-  .attr("class", "slice");    //allow us to style things in the slices (like text)
+      .append("svg:g")                //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
+      .attr("class", "slice");    //allow us to style things in the slices (like text)
  
  
-arcs.append("svg:path")
-  .attr("fill", function(d, i) { return color(i); } ) //set the color for each slice to be chosen from the color function defined above
-  .attr("d", arc);                                    //this creates the actual SVG path using data (pie) with the arc drawing function
- 
-arcs.append("svg:text")                                     //add a label to each slice
-  .attr("transform", function(d) {                    //set the label's origin to the center of the arc
-    //we have to make sure to set these before calling arc.centroid
+  arcs.append("svg:path")
+    .attr("fill", function(d, i) { return color(i); } )
+    .attr("d", arc)                                     //actual SVG path created here
+    .on("mouseover", function(i) {d3.select(this).style("fill","white")})
+    .on("mouseout", function(d, i) {d3.select(this).style("fill", color(i))})
+    .append("svg:title")
+      .text(function(d,i) {return memData[i].path})
+
+  arcs.append("svg:path") 
+    .attr("fill", "black")
+    .attr("d",outline);
+
+  arcs.append("svg:text")
+    .attr("transform", function(d) {
     
-    d.innerRadius = 0;
-    d.outerRadius = rad;
-    return "translate(" + arc.centroid(d) + ")";        //this gives us a pair of coordinates like [50, 50]
- })
-  .attr("text-anchor", "middle")                          //center the text on it's origin
-  .text(function(d, i) { return message[i].path; });        //get the label from our original data array
+      d.innerRadius = innerRad;
+      d.outerRadius = rad;
+      return "translate(" + arc.centroid(d) + ")";
+  })
+  .attr("text-anchor", "middle")
+  .text(function(block, i) { return memData[i].path; });
+
+  var vis2 = canvas.data([tabData])
+    .append("svg:g")
+    .attr("transform","translate(" + 3*width/4 + "," + height/2 + ")");
+
+  var morepie = d3.layout.pie()
+    .value(function(d) { return d.amount; });
+
+  var morearcs = vis2.selectAll("g.slice")
+    .data(morepie)
+    .enter()
+      .append("svg:g")
+      .attr("class","slice");
+  
+  morearcs.append("svg:path")
+    .attr("fill", function(block, i) { return color(i); })
+    .attr("d",arc)
+    .on("mouseover", function(i) { d3.select(this).style("fill","white") })
+    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i))})
+    .append("svg:title")
+    .text(function(d, i) {return tabData[i].name});
+
+  morearcs.append("svg:path")
+    .attr("fill","black")
+    .attr("d",outline);
+  morearcs.append("svg:text")
+    .attr("transform", function(d) {
+      d.innerRadius = innerRad;
+      d.outerRadius = rad;
+      return "translate(" + arc.centroid(d) + ")";
+    })
+    .attr("text-anchor","middle")
+    .text(function(block, i) {return tabData[i].name});
 });
+
+var footer = d3.select("#finisher")
+  .append("a")
+  .attr("href","about:memory")
+  .attr("target","_blank")
+  .style("font-size","15px")
+  .style("font-style","italic")
+  .text("Where do you get your data from?");
