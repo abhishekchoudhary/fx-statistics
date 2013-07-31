@@ -51,19 +51,44 @@ self.on("message", function(transmission) {
       .attr("class", "slice");    //allow us to style things in the slices (like text)
  
  
+
+  var div = d3.select("#wrapper").append("div")
+    .attr("class","tooltip")
+    .style("opacity",1e-6);
+
   arcs.append("svg:path")
     .attr("fill", function(d, i) { return color(i); } )
     .attr("d", arc)                                     //actual SVG path created here
-    .on("mouseover", function(i) {d3.select(this).style("fill","white")})
-    .on("mouseout", function(d, i) {d3.select(this).style("fill", color(i))})
-    .append("svg:title")
-      .text(function(d,i) {return memData[i].path})
+    .on("mouseover", function(d) {d3.select(this).style("fill", "white"); mouseover();})
+    .on("mousemove", mousemove)
+    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i)); mouseout(); });
+
+
+  function mouseover() {
+    div.transition()
+      .duration(500)
+      .style("opacity", 1);
+  }
+
+  function mousemove() {
+    div
+      .html("<b>" + this.__data__.data.path + "</b><br/>" + (this.__data__.data.amount/1024).toFixed(3) + " kb")
+      .style("width", 30+10*this.__data__.data.path.length + "px")
+      .style("left", (d3.event.pageX) + "px")
+      .style("top", (d3.event.pageY) + "px");
+  }
+
+  function mouseout() {
+    div.transition()
+      .duration(500)
+      .style("opacity", 1e-6);
+  }
 
   arcs.append("svg:path") 
     .attr("fill", "black")
     .attr("d",outline);
 
-  arcs.append("svg:text")
+  /*arcs.append("svg:text")
     .attr("transform", function(d) {
     
       d.innerRadius = innerRad;
@@ -72,6 +97,7 @@ self.on("message", function(transmission) {
   })
   .attr("text-anchor", "middle")
   .text(function(block, i) { return memData[i].path; });
+  */
 
   var vis2 = canvas.data([tabData])
     .append("svg:g")
@@ -89,22 +115,27 @@ self.on("message", function(transmission) {
   morearcs.append("svg:path")
     .attr("fill", function(block, i) { return color(i); })
     .attr("d",arc)
-    .on("mouseover", function(i) { d3.select(this).style("fill","white") })
+    .on("mouseover", function(d) {d3.select(this).style("fill", "white"); mouseover();})
+    .on("mousemove", mousemove)
+    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i)); mouseout(); })
+
+    /*.on("mouseover", function(i) { d3.select(this).style("fill","white") })
     .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i))})
     .append("svg:title")
-    .text(function(d, i) {return tabData[i].name});
+    .text(function(d, i) {return tabData[i].name});*/
 
   morearcs.append("svg:path")
     .attr("fill","black")
     .attr("d",outline);
-  morearcs.append("svg:text")
+
+  /*morearcs.append("svg:text")
     .attr("transform", function(d) {
       d.innerRadius = innerRad;
       d.outerRadius = rad;
       return "translate(" + arc.centroid(d) + ")";
     })
     .attr("text-anchor","middle")
-    .text(function(block, i) {return tabData[i].name});
+    .text(function(block, i) {return tabData[i].path});*/
 });
 
 var footer = d3.select("#finisher")
