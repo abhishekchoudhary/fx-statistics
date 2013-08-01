@@ -1,27 +1,19 @@
-var name = d3.select("#wrapper")
-  .append("p")
-  .style("font-size", "30px")
-  .style("font-weight","bold")
-  .text("Firefox Statistics");
-
 self.on("message", function(transmission) {
+  
+  var version = transmission["version"],
+      memData = transmission["memdata"],
+      tabData = transmission["tabdata"],
+      name = d3.select("#wrapper")
+        .append("p")
+        .style("font-size", "30px")
+        .style("font-weight","bold")
+        .text(version + " Statistics");
+
   var width = 1000,
       height = 500,
       rad = 150;
-      innerRad = 50;
-
-  var color = d3.scale.category20();
-
-  var memData = transmission["memdata"],
-      tabData = transmission["tabdata"];
- 
-  /*var canvas = d3.select("#wrapper")
-    .append("svg:svg")
-    .data([memData])
-    .attr("width", width)
-    .attr("height", height)
-      .append("svg:g")
-      .attr("transform", "translate(" + width/4 + "," + height/2 + ")");*/
+      innerRad = 50,
+      color = d3.scale.category20();
 
   var canvas = d3.select("#wrapper")
     .append("svg:svg")
@@ -88,17 +80,6 @@ self.on("message", function(transmission) {
     .attr("fill", "black")
     .attr("d",outline);
 
-  /*arcs.append("svg:text")
-    .attr("transform", function(d) {
-    
-      d.innerRadius = innerRad;
-      d.outerRadius = rad;
-      return "translate(" + arc.centroid(d) + ")";
-  })
-  .attr("text-anchor", "middle")
-  .text(function(block, i) { return memData[i].path; });
-  */
-
   var vis2 = canvas.data([tabData])
     .append("svg:g")
     .attr("transform","translate(" + 3*width/4 + "," + height/2 + ")");
@@ -118,11 +99,6 @@ self.on("message", function(transmission) {
     .on("mouseover", function(d) {d3.select(this).style("fill", "white"); mouseover();})
     .on("mousemove", mousemove)
     .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i)); mouseout(); })
-
-    /*.on("mouseover", function(i) { d3.select(this).style("fill","white") })
-    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i))})
-    .append("svg:title")
-    .text(function(d, i) {return tabData[i].name});*/
 
   morearcs.append("svg:path")
     .attr("fill","black")
