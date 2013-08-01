@@ -1,26 +1,27 @@
-self.on("message", function(transmission) {
+self.on("message", function(transmission) {                                                       // Start when message containing data is received
   
-  var version = transmission["version"],
-      memData = transmission["memdata"],
-      tabData = transmission["tabdata"],
+  var version = transmission["version"],                                                          // Collect browser version from transmission
+      memData = transmission["memdata"],                                                          // Collect single-reporter data from transmission
+      tabData = transmission["tabdata"],                                                          // Collect multi-reporter data from transmission
       name = d3.select("#wrapper")
         .append("p")
         .style("font-size", "30px")
         .style("font-weight","bold")
         .text(version + " Statistics");
 
-  var width = 1000,
-      height = 500,
-      rad = 150;
-      innerRad = 50,
-      color = d3.scale.category20();
+  var margin = {top: 20, right: 10, bottom: 20, left: 10},                                        // Defining margins for the display area
+      width = 1000 - margin.left - margin.right,                                                  // Width of the SVG element to be drawn
+      height = 500 - margin.top - margin.bottom,                                                  // Height of the SVG element to be drawn
+      rad = 150,                                                                                  // Outer Radius of the Donut Charts
+      innerRad = 50,                                                                              // Inner Radius of the Donut Charts
+      color = d3.scale.category20();                                                              // Selecting one of D3's built-in color scales
 
-  var canvas = d3.select("#wrapper")
+  var canvas = d3.select("#wrapper")                                                              // Create SVG on 'wrapper' div
     .append("svg:svg")
-    .attr("width", width)
-    .attr("height", height);
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom);
 
-  var vis1 = canvas.data([memData])
+  var vis1 = canvas.data([memData])                                                               // Create first visuallization, bind memData
     .append("svg:g")
     .attr("transform", "translate(" + width/4 + "," + height/2 + ")");
  
@@ -114,7 +115,7 @@ self.on("message", function(transmission) {
     .text(function(block, i) {return tabData[i].path});*/
 });
 
-var footer = d3.select("#finisher")
+var footer = d3.select("#finisher")                                                               // Link to 'about:memory' as the source of data
   .append("a")
   .attr("href","about:memory")
   .attr("target","_blank")

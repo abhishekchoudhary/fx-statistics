@@ -1,3 +1,8 @@
+/* This is the CSS file that will be applied to the page 'about:stats'.
+ * The location of the file is supplied as a parameter to the 'populate'
+ * function in 'data/stats.js', called through 'lib/main.js' as a
+ * contentScriptFile.
+ * */
 body {
   background: #C0C0C0;
   font: message-box;
