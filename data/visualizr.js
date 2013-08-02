@@ -34,7 +34,7 @@ self.on("message", function(transmission) {                                     
     .innerRadius(rad);
  
   var pie = d3.layout.pie()           //this will create arc data for us given a list of values
-    .value(function(block) { return block.amount; });
+    .value(function(d) { return d.amount; });
  
   var arcs = vis1.selectAll("g.slice")
     .data(pie)                          //associate the generated pie data
@@ -42,8 +42,6 @@ self.on("message", function(transmission) {                                     
                                       The result is creating a <g> for every object in the data array*/
       .append("svg:g")                //create a group to hold each slice (we will have a <path> and a <text> element associated with each slice)
       .attr("class", "slice");    //allow us to style things in the slices (like text)
- 
- 
 
   var div = d3.select("#wrapper").append("div")
     .attr("class","tooltip")
@@ -52,9 +50,9 @@ self.on("message", function(transmission) {                                     
   arcs.append("svg:path")
     .attr("fill", function(d, i) { return color(i); } )
     .attr("d", arc)                                     //actual SVG path created here
-    .on("mouseover", function(d) {d3.select(this).style("fill", "white"); mouseover();})
+    .on("mouseover", function(d) { d3.select(this).style("fill", "white"); mouseover(); })
     .on("mousemove", mousemove)
-    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i)); mouseout(); });
+    .on("mouseout", function(d, i) {d3.select(this).style("fill", color(i)); mouseout(); });
 
 
   function mouseover() {
@@ -95,11 +93,11 @@ self.on("message", function(transmission) {                                     
       .attr("class","slice");
   
   morearcs.append("svg:path")
-    .attr("fill", function(block, i) { return color(i); })
+    .attr("fill", function(d, i) { return color(i); })
     .attr("d",arc)
-    .on("mouseover", function(d) {d3.select(this).style("fill", "white"); mouseover();})
+    .on("mouseover", function(d) { d3.select(this).style("fill", "white"); mouseover(); })
     .on("mousemove", mousemove)
-    .on("mouseout", function(d,i) {d3.select(this).style("fill", color(i)); mouseout(); })
+    .on("mouseout", function(d, i) {d3.select(this).style("fill", color(i)); mouseout(); });
 
   morearcs.append("svg:path")
     .attr("fill","black")
