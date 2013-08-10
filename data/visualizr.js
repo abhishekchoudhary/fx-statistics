@@ -1,6 +1,6 @@
 self.postMessage(1);
 self.port.on('first_block', function(transmission) {                                              // Start when message containing data is received
-  console.log("Received first block.")
+  console.log("Received first block.");
   var version = transmission["version"],                                                          // Collect browser version from transmission
       memData = transmission["memdata"],                                                          // Collect single-reporter data from transmission
       tabData = transmission["tabdata"],                                                          // Collect multi-reporter data from transmission
@@ -14,11 +14,12 @@ self.port.on('first_block', function(transmission) {                            
     console.log("Requesting sheep block...");
     self.port.emit('sheep_block_request', '-');
     console.log("Sheep block requested.");
+    canvas.call(draw);
   }, 5000);
 
   self.port.on('sheep_block', function(transmission) {
-    memData = transmission["memdata"],
-    tabData = transmission["tabdata"]
+    memData = transmission["memdata"];
+    tabData = transmission["tabdata"];
   });
 
   var margin = {top: 20, right: 10, bottom: 20, left: 10},                                        // Defining margins for the display area
@@ -33,6 +34,8 @@ self.port.on('first_block', function(transmission) {                            
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom);
 
+  canvas.call(draw);
+  function draw(canvas) {
   var vis1 = canvas.data([memData])                                                               // Create first visuallization, bind memData
     .append("svg:g")
     .attr("transform", "translate(" + width/4 + "," + height/2 + ")");
@@ -58,10 +61,11 @@ self.port.on('first_block', function(transmission) {                            
   var div = d3.select("#wrapper").append("div")
     .attr("class","tooltip")
     .style("opacity",1e-6);
-
-  arcs.append("svg:path")
+  
+  var path = arcs.append("svg:path")
     .attr("fill", function(d, i) { return color(i); } )
     .attr("d", arc)                                     //actual SVG path created here
+    .each(function(d) { this._current = d; }) 
     .on("mouseover", function(d) { d3.select(this).style("fill", "white"); mouseover(); })
     .on("mousemove", mousemove)
     .on("mouseout", function(d, i) {d3.select(this).style("fill", color(i)); mouseout(); });
@@ -85,6 +89,21 @@ self.port.on('first_block', function(transmission) {                            
     div.transition()
       .duration(500)
       .style("opacity", 1e-6);
+  }
+
+  function redraw() {
+    var value = this.value;
+    pie.value(function(d) { return d[value]; }); // change the value function
+    path = path.data(pie); // compute the new angles
+    path.transition().duration(750).attrTween("d", arcTween);
+  }
+
+  function arcTween(a) {
+    var i = d3.interpolate(this._current, a);
+    this._current = i(0);
+    return function(t) {
+      return arc(i(t));
+    };
   }
 
   arcs.append("svg:path") 
@@ -114,6 +133,7 @@ self.port.on('first_block', function(transmission) {                            
   morearcs.append("svg:path")
     .attr("fill","black")
     .attr("d",outline);
+  }
 
   /*morearcs.append("svg:text")
     .attr("transform", function(d) {
