@@ -1,5 +1,6 @@
-self.on("message", function(transmission) {                                                       // Start when message containing data is received
-  
+self.postMessage(1);
+self.port.on('first_block', function(transmission) {                                              // Start when message containing data is received
+  console.log("Received first block.")
   var version = transmission["version"],                                                          // Collect browser version from transmission
       memData = transmission["memdata"],                                                          // Collect single-reporter data from transmission
       tabData = transmission["tabdata"],                                                          // Collect multi-reporter data from transmission
@@ -8,6 +9,17 @@ self.on("message", function(transmission) {                                     
         .style("font-size", "30px")
         .style("font-weight","bold")
         .text(version + " Statistics");
+
+  setInterval(function() {
+    console.log("Requesting sheep block...");
+    self.port.emit('sheep_block_request', '-');
+    console.log("Sheep block requested.");
+  }, 5000);
+
+  self.port.on('sheep_block', function(transmission) {
+    memData = transmission["memdata"],
+    tabData = transmission["tabdata"]
+  });
 
   var margin = {top: 20, right: 10, bottom: 20, left: 10},                                        // Defining margins for the display area
       width = 1000 - margin.left - margin.right,                                                  // Width of the SVG element to be drawn

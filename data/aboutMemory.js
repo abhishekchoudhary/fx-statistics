@@ -1,182 +1,3 @@
-const {Cc, Ci, Cu, CC, components} = require("chrome"),
-      {data} = require("sdk/self"),
-      tabs = require("tabs"),
-      BrandStringBundle = require("app-strings").StringBundle("chrome://branding/locale/brand.properties");
-
-let {PageMod} = require("sdk/page-mod");
-
-const debugFlag = true,
-      aboutStatsUrl = "about:stats",
-      statsTagLine = "Get To Know Your Browser",
-      brandShortName = BrandStringBundle.get("brandShortName"),
-      statsFullName = brandShortName + " Statistics";
-
-var gMgr = Cc["@mozilla.org/memory-reporter-manager;1"].getService(Ci.nsIMemoryReporterManager),  // Create a memory-reporter object
-    dataArray = [],                                                                               // Object to hold data from single reporters
-    tabArray = [],                                                                                // Object to hold data from multi reporters
-    tabCollector = {},
-    transmission = {};                                                                            // A hash that will hold all values to be sent
-
-transmission["version"] = brandShortName;
-
-let toolbarButton = require('toolbarbutton').ToolbarButton({                                      // Create a toolbar button
-  id: "stats-toolbar-button",
-  label: "How we doin'?",
-  tooltiptext: statsFullName,
-  image: data.url("chart-icon.png"),
-  onCommand: function () {  // When invoked
-    let aboutStatsAlreadyOpen = false;
-    
-    // Check to see if aboutStatsUrl is already open in one of the tabs
-    
-    for each (let tab in tabs) {
-      if (tab.url.toLowerCase() == aboutStatsUrl) {
-        aboutStatsAlreadyOpen = true;
-        tab.activate();
-        tab.reload();
-      }
-    }
-
-    // Open a new instance of aboutStatsUrl if not already open
-
-    if (!aboutStatsAlreadyOpen) {
-      //openedViaTBB = true;
-      loadStatsPage();
-    }
-  }
-});
-
-function log(someString) {
-  if(debugFlag) {
-    console.log(someString);
-  }
-}
-
-function processReporters() {
-  dataArray = [];                                                                                 // Initialize the dataArray
-  let e = gMgr.enumerateReporters();
-  while (e.hasMoreElements()) {
-    let rOrig = e.getNext().QueryInterface(Ci.nsIMemoryReporter);
-    dataArray.push(JSON.parse(JSON.stringify(rOrig)));
-  }
-  transmission["memdata"] = dataArray;                                                            // Place the dataArray in transmission
-
-  tabArray = [];                                                                                  // Initialize the tabArray
-  let f = gMgr.enumerateMultiReporters();
-  while(f.hasMoreElements()) {
-    var mr = f.getNext().QueryInterface(Ci.nsIMemoryMultiReporter);
-    
-    if (mr.name != "window-objects") {
-      continue;
-    }
-
-    mr.collectReports(oneReport, null);
-  }
-
-  for(var t in tabCollector) {
-    let a = fixTab(t);
-    if (a)
-      tabArray.push({"path":a, "amount":tabCollector[t]});
-    else
-      tabArray.push({"path":t, "amount":tabCollector[t]});
-  }
-
-  transmission["tabdata"] = tabArray;                                                             // Place the tabArray in the transmission
-}
-
-function fixTab(t){
-  var a;
-  for each (let tab in tabs) {
-    let tabInfo = t.split(/, /);
-    if(tab.url.replace(/\//g, '\\') == tabInfo[0]) {
-      a = tab.title + ", " + tabInfo[1];
-      break;
-    }
-    else
-      a = null;
-  }
-  return a;
-}
-
-function oneReport(aProcess, aUnsafePath, aKind, aUnits, aAmount, aDescription) {
-    // This function will be called once for each entry from the
-    // multi-reporters. aUnsafePath has the full name, and
-    // if aUnits == 0 it means the amount is in bytes. (this is the only
-    // one that is relevant for us)
-    
-  if (aUnits != 0) {
-    return;
-  }
-
-  var regExp = aUnsafePath.match(/top\(([^)]+)/);
-
-  if (regExp) {
-    var tabUrl = regExp[1];
-    if (tabCollector[tabUrl]) {
-      tabCollector[tabUrl] += aAmount;
-    } 
-    else {
-      tabCollector[tabUrl] = aAmount;
-    }
-  }
-}
-
-function onStatsPageOpened(tab) {
-  log("Stats Page Opened");
-
-  let styleCss = data.url("stats.css");
-  tab.attach({
-    contentScriptFile: data.url("stats.js"),
-    contentScript: "populate('" + escape(styleCss) + "','" + escape(statsFullName) + "','" + escape(statsTagLine) + "');",
-  });
-  
-  var worker = tab.attach({
-    contentScriptFile: [data.url("d3.v3.js"), data.url("visualizr.js")],
-    onMessage: function () {
-      processReporters();
-      log("Sending first block...");
-      worker.port.emit('first_block', transmission);
-      log("Sent first block.")
-      worker.port.on('sheep_block_request', function () {
-        processReporters();
-        log("Sending sheep block...");
-        worker.port.emit('sheep_block', transmission);
-        log("Sent sheep block.");
-      });
-    }
-  });
-}
-
-function loadStatsPage() {
-  tabs.open({
-    url: aboutStatsUrl,
-    onReady: log("Via loadStatsPage.") // We don't need to actually *do* anything, statsOnDemand will be invoked by the URL
-  });
-}
-
-function statsOnDemand(tab) {
-  if (tab.url.toLowerCase() == aboutStatsUrl) {
-    log("Via statsOnDemand");
-    onStatsPageOpened(tab);
-  }
-}
-
-tabs.on('ready',statsOnDemand);
-
-try {
-  require('about').add({what: 'stats', url: data.url("stats.html")});
-  toolbarButton.moveTo({
-    toolbarID: "nav-bar",
-    forceMove: true
-  });
-  log("All good!");
-}
-catch(err) {
-  log(err);
-}
-
-/*---------------------------------------------------------------------------------------------*/
-
 /* -*- Mode: js2; tab-width: 8; indent-tabs-mode: nil; js2-basic-offset: 2 -*-*/
 /* vim: set ts=8 sts=2 et sw=2 tw=80: */
 /* This Source Code Form is subject to the terms of the Mozilla Public
@@ -198,11 +19,16 @@ catch(err) {
 // about:compartments doesn't support "file=" parameters and will ignore them
 // if they're provided.
 
-//"use strict";
+"use strict";
 
 //---------------------------------------------------------------------------
 // Code shared by about:memory and about:compartments
 //---------------------------------------------------------------------------
+
+const Cc = Components.classes;
+const Ci = Components.interfaces;
+const Cu = Components.utils;
+const CC = Components.Constructor;
 
 const KIND_NONHEAP           = Ci.nsIMemoryReporter.KIND_NONHEAP;
 const KIND_HEAP              = Ci.nsIMemoryReporter.KIND_HEAP;
@@ -226,17 +52,17 @@ XPCOMUtils.defineLazyGetter(this, "nsGzipConverter",
                             () => CC("@mozilla.org/streamconv;1?from=gzip&to=uncompressed",
                                      "nsIStreamConverter"));
 
-//let gMgr = Cc["@mozilla.org/memory-reporter-manager;1"]
-//             .getService(Ci.nsIMemoryReporterManager);
+let gMgr = Cc["@mozilla.org/memory-reporter-manager;1"]
+             .getService(Ci.nsIMemoryReporterManager);
 
 let gUnnamedProcessStr = "Main Process";
 
 let gIsDiff = false;
 
 {
-  //let split = document.location.href.split('?');
+  let split = document.location.href.split('?');
   // The toLowerCase() calls ensure that addresses like "ABOUT:MEMORY" work.
-  //document.title = split[0].toLowerCase();
+  document.title = split[0].toLowerCase();
 }
 
 let gChildMemoryListener = undefined;
@@ -860,7 +686,7 @@ function loadMemoryReportsFromFile(aFilename, aFn)
       },
       onStopRequest: function(aR, aC, aStatusCode) {
         try {
-          if (!components.isSuccessCode(aStatusCode)) {
+          if (!Components.isSuccessCode(aStatusCode)) {
             throw aStatusCode;
           }
           reader.readAsText(new Blob(this.data));
@@ -927,7 +753,7 @@ function updateAboutMemoryFromClipboard()
 {
   // Get the clipboard's contents.
   let cb = Cc["@mozilla.org/widget/clipboard;1"].
-           getService(components.interfaces.nsIClipboard);
+           getService(Components.interfaces.nsIClipboard);
   let transferable = Cc["@mozilla.org/widget/transferable;1"]
                        .createInstance(Ci.nsITransferable);
   let loadContext = window.QueryInterface(Ci.nsIInterfaceRequestor)
@@ -1260,7 +1086,7 @@ function getPCollsByProcess(aProcessMemoryReports, aForceShowSmaps)
 
   function ignoreMulti(aMRName)
   {
-    return (aMRName === "smaps") ||
+    return (aMRName === "smaps" && !gVerbose.checked && !aForceShowSmaps) ||
             aMRName === "compartments" ||
             aMRName === "ghost-windows";
   }
@@ -2472,12 +2298,4 @@ function appendProcessAboutCompartmentsElements(aP, aProcess, aCompartments, aGh
   appendProcessAboutCompartmentsElementsHelper(aP, systemCompartments, "System Compartments");
   appendProcessAboutCompartmentsElementsHelper(aP, aGhostWindows, "Ghost Windows");
 }
-
-//function processCallback(a, b, c) {
-  //processMemoryReporters(a,b,c);
-//}
-//var tree = getPCollsByProcess(processCallback, false);
-
-//for (var branch in tree["Main Process"]["_degenerates"])
-  //console.log(branch);
 
