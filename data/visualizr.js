@@ -1,41 +1,91 @@
-self.postMessage(1);
-self.port.on('first_block', function(transmission) {                                              // Start when message containing data is received
-  console.log("Received first block.");
-  var version = transmission["version"],                                                          // Collect browser version from transmission
-      memData = transmission["memdata"],                                                          // Collect single-reporter data from transmission
-      tabData = transmission["tabdata"],                                                          // Collect multi-reporter data from transmission
-      name = d3.select("#wrapper")
-        .append("p")
-        .style("font-size", "30px")
-        .style("font-weight","bold")
-        .text(version + " Statistics");
+const margin = {top: 20, right: 10, bottom: 20, left: 10},                                        // Defining margins for the display area
+      width = 1000 - margin.left - margin.right,                                                  // Width of the SVG element to be drawn
+      height = 500 - margin.top - margin.bottom;                                                  // Height of the SVG element to be drawn
 
-  setInterval(function() {
-    console.log("Requesting sheep block...");
-    self.port.emit('sheep_block_request', '-');
-    console.log("Sheep block requested.");
-    canvas.call(draw);
-  }, 5000);
+var canvas = d3.select("#wrapper")                                                                // Create SVG on 'wrapper' div
+  .append("svg:svg")
+  .attr("width", width + margin.left + margin.right)
+  .attr("height", height + margin.top + margin.bottom);
 
-  self.port.on('sheep_block', function(transmission) {
-    memData = transmission["memdata"];
-    tabData = transmission["tabdata"];
+self.postMessage(1);                                                                              // Tell the main script that the module is ready
+
+var version,
+    tabData,
+    memData;
+
+let liveUpdate = true,
+    autoStop = false,
+    debugging = true,
+    buttonVal = 1,
+    buttonValSet = [{text:"Start Live Updates", title:"Should I start pulling the latest data?"},
+                    {text:"Stop Live Updates",  title:"Should I stop pulling the latest data?"}];
+
+function log(message) {
+  if(debugging)
+    console.log(message);
+}
+
+function collect(transmission) {
+  version = transmission.version,                                                                 // Collect browser version from transmission
+  memData = transmission.memdata,                                                                 // Collect single-reporter data from transmission
+  tabData = transmission.tabdata;                                                                 // Collect multi-reporter data from transmission
+}
+
+function flipButton() {
+  liveUpdate = !liveUpdate;
+  buttonVal = (buttonVal + 1) % 2;
+}
+
+function updateButton() {
+  d3.select("button")
+    .text(buttonState().text)
+    .attr("title", buttonState().title);
+}
+
+function buttonState(change) {
+  return buttonValSet[buttonVal];
+}
+
+function initializePage() {
+  d3.select("#interact")
+    .html("<input type=\"range\" min=\"-5\" max=\"0\" step=\"1\" value=\"0\" title=\"Control the dataset being used,&#10;rightmost being the latest\">");
+  
+  d3.select("#interact")
+    .append("button")
+    .text(buttonState().text)
+    .attr("title", buttonState().title)
+    .on("click", function() {
+      flipButton();
+      updateButton();
   });
 
-  var margin = {top: 20, right: 10, bottom: 20, left: 10},                                        // Defining margins for the display area
-      width = 1000 - margin.left - margin.right,                                                  // Width of the SVG element to be drawn
-      height = 500 - margin.top - margin.bottom,                                                  // Height of the SVG element to be drawn
-      rad = 150,                                                                                  // Outer Radius of the Donut Charts
+  d3.select("#interact")
+    .append("p")
+    .style("font-size", "30px")
+    .style("font-weight","bold")
+    .text(version + " Statistics");
+
+  d3.select("#finisher")                                                                          // Link to 'about:memory' as the source of data
+    .append("a")
+    .attr("href","about:memory")
+    .attr("target","_blank")
+    .style("font-size","15px")
+    .style("font-style","italic")
+    .text("Where do you get your data from?");
+}
+
+self.port.on('first_block', function(transmission) {                                              // Start when message containing data is received
+  console.log("Received first block.");
+  collect(transmission);
+  initializePage();
+  canvas.call(draw);
+});
+
+function draw(canvas) {
+  var rad = 150,                                                                                  // Outer Radius of the Donut Charts
       innerRad = 50,                                                                              // Inner Radius of the Donut Charts
       color = d3.scale.category20();                                                              // Selecting one of D3's built-in color scales
 
-  var canvas = d3.select("#wrapper")                                                              // Create SVG on 'wrapper' div
-    .append("svg:svg")
-    .attr("width", width + margin.left + margin.right)
-    .attr("height", height + margin.top + margin.bottom);
-
-  canvas.call(draw);
-  function draw(canvas) {
   var vis1 = canvas.data([memData])                                                               // Create first visuallization, bind memData
     .append("svg:g")
     .attr("transform", "translate(" + width/4 + "," + height/2 + ")");
@@ -133,7 +183,7 @@ self.port.on('first_block', function(transmission) {                            
   morearcs.append("svg:path")
     .attr("fill","black")
     .attr("d",outline);
-  }
+}
 
   /*morearcs.append("svg:text")
     .attr("transform", function(d) {
@@ -143,12 +193,9 @@ self.port.on('first_block', function(transmission) {                            
     })
     .attr("text-anchor","middle")
     .text(function(block, i) {return tabData[i].path});*/
-});
 
-var footer = d3.select("#finisher")                                                               // Link to 'about:memory' as the source of data
-  .append("a")
-  .attr("href","about:memory")
-  .attr("target","_blank")
-  .style("font-size","15px")
-  .style("font-style","italic")
-  .text("Where do you get your data from?");
+
+self.port.on('sheep_block', function(transmission) {
+  collect(transmission);
+  canvas.call(draw);
+});
