@@ -19,14 +19,6 @@ input {
   width: 400px;
 }
 
-button {
-  position: absolute;
-  right: 85px;
-  top: 35px;
-  width: 250px;
-  height: 50px;
-}
-
 div.tooltip {
   position: absolute;
   text-align: center;
@@ -37,4 +29,17 @@ div.tooltip {
   border: solid 1px #aaa;
   border-radius: 8px;
   pointer-events: none;
+}
+
+linepath {
+  stroke: steelblue;
+  stroke-width: 2;
+  fill: none;
+}
+.axis linepath,
+.axis line {
+  fill: none;
+  stroke: grey;
+  stroke-width: 1;
+  shape-rendering: crispEdges;
 }
