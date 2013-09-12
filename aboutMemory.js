@@ -4,322 +4,31 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-const {Cc, Ci, Cu, CC, components} = require("chrome"),
-      {data} = require("sdk/self"),
-      tabs = require("tabs"),
-      BrandStringBundle = require("app-strings").StringBundle("chrome://branding/locale/brand.properties");
+// This file is used for both about:memory and about:compartments.
 
-const debugging = true,
-      aboutStatsUrl = "about:stats",
-      statsTagLine = "Get To Know Your Browser",
-      brandShortName = BrandStringBundle.get("brandShortName"),
-      statsFullName = brandShortName + " Statistics";
+// You can direct about:memory to immediately load memory reports from a file
+// by providing a file= query string.  For example,
+//
+//     about:memory?file=/home/username/reports.json.gz
+//
+// "file=" is not case-sensitive.  We'll URI-unescape the contents of the
+// "file=" argument, and obviously the filename is case-sensitive iff you're on
+// a case-sensitive filesystem.  If you specify more than one "file=" argument,
+// only the first one is used.
+//
+// about:compartments doesn't support "file=" parameters and will ignore them
+// if they're provided.
 
-var gMgr = Cc["@mozilla.org/memory-reporter-manager;1"].getService(Ci.nsIMemoryReporterManager),  // Master memory-reporter object
-    memArray = [],                                                                               // Object to hold data from single reporters
-    tabArray = [],                                                                                // Object to hold data from multi reporters
-    memTotal,
-    tabTotal,
-    tabCollector = {},
-    transmission = {};                                                                            // A hash that will hold all values to be sent
-
-transmission["version"] = brandShortName;
-
-// Creating a toolbarbotton object to place a click-able access point in the browser's chrome
-let toolbarButton = require('toolbarbutton').ToolbarButton({
-  id: "stats-toolbar-button",
-  label: "How we doin'?",
-  tooltiptext: statsFullName,
-  image: data.url("chart-icon.png"),
-  onCommand: function () {
-    let aboutStatsAlreadyOpen = false;
-    
-    // Check to see if aboutStatsUrl is already open in one of the tabs
-    
-    for each (let tab in tabs) {
-      if (tab.url.toLowerCase() == aboutStatsUrl) {
-        aboutStatsAlreadyOpen = true;
-        tab.activate();
-      }
-    }
-
-    // Open a new instance of aboutStatsUrl if not already open
-
-    if (!aboutStatsAlreadyOpen) {
-      loadStatsPage();
-    }
-  }
-});
-
-// Logger function to facilitate debugging process
-function log(someString) {
-  if(debugging) {
-    console.log(JSON.stringify(someString));
-  }
-}
-
-function processTabs() {
-  tabArray = [];                                                                                  // Initialize the tabArray
-  tabTotal = 0;
-  let f = gMgr.enumerateMultiReporters();
-  while(f.hasMoreElements()) {
-    var mr = f.getNext().QueryInterface(Ci.nsIMemoryMultiReporter);
-    
-    if (mr.name != "window-objects") {
-      continue;
-    }
-
-    mr.collectReports(oneReport, null);
-  }
-
-  for(var t in tabCollector) {
-    let a = fixTab(t);
-    if (a)
-      tabArray.push({"name":a, "url":t, "size":tabCollector[t]});
-    else
-      tabArray.push({"name":t, "size":tabCollector[t]});
-    
-    tabTotal += tabCollector[t];
-  }
-
-  tabCollector = {};
-  transmission["tabdata"] = tabArray;                                                             // Place the tabArray in the transmission
-  transmission["tabtotal"] = tabTotal;
-}
-
-function processInternals() {
-  memArray = [];                                                                                 // Initialize the memArray
-  memTotal = 0;
-  let e = gMgr.enumerateReporters();
-  while (e.hasMoreElements()) {
-    let rOrig = e.getNext().QueryInterface(Ci.nsIMemoryReporter);
-    if (!rOrig["path"].contains("explicit/")) {
-      memArray.push({"name": rOrig["path"], "size": rOrig["amount"]});
-      memTotal += rOrig["amount"];
-    }
-  }
-
-  transmission["memdata"] = memArray;                                                            // Place the memArray in transmission
-  transmission["memtotal"] = memTotal;
-
-  var tree = getPCollsByProcess(processCallback, false);
-  var explicitTree = tree["Main Process"]["_trees"]["explicit"];
-  flarify(explicitTree);
-  transmission["explicitTree"] = explicitTree;
-}
-
-function processReporters() {
-  memArray = [];                                                                                 // Initialize the memArray
-  let e = gMgr.enumerateReporters();
-  while (e.hasMoreElements()) {
-    let rOrig = e.getNext().QueryInterface(Ci.nsIMemoryReporter);
-    if (!rOrig["path"].contains("explicit/"))
-      memArray.push({"name": rOrig["path"], "size": rOrig["amount"]});
-  }
-
-  transmission["memdata"] = memArray;                                                            // Place the memArray in transmission
-
-  tabArray = [];                                                                                  // Initialize the tabArray
-  let f = gMgr.enumerateMultiReporters();
-  while(f.hasMoreElements()) {
-    var mr = f.getNext().QueryInterface(Ci.nsIMemoryMultiReporter);
-    
-    if (mr.name != "window-objects") {
-      continue;
-    }
-
-    mr.collectReports(oneReport, null);
-  }
-
-  for(var t in tabCollector) {
-    let a = fixTab(t);
-    if (a)
-      tabArray.push({"name":a, "url":t, "size":tabCollector[t]});
-    else
-      tabArray.push({"name":t, "size":tabCollector[t]});
-  }
-
-  transmission["tabdata"] = tabArray;                                                             // Place the tabArray in the transmission
-  var tree = getPCollsByProcess(processCallback, false);
-  var explicitTree = tree["Main Process"]["_trees"]["explicit"];
-  flarify(explicitTree);
-  transmission["explicitTree"] = explicitTree;
-
-  tabCollector = {};
-}
-
-/* Function to streamline the collected dump of the memory statistics from
- * about:memory's pCollsByProcess method
-
- * Removes every attribute from the memory dump except anything in the 'properties'
- * object. Also, renaming of certain attribbutes is done to conform to the popular
- * 'flare.json' format used by a lot of D3 modules. This is NOT necessary, but helps
- * making the dump reusable to a lot of external modules. */
-
-function flarify(block) {
-
-  // Place all required attributes from the dump here -- they will not be deleted
-  properties = ["name", "children", "size"];
-  
-  block["name"] = block["_unsafeName"];
-  delete block["_unsafeName"];
-  
-  if (!!block["_kids"]) { 
-    block["children"] = block["_kids"];
-    delete block["_kids"];
-
-    block["size"] = 0;
-
-    for (var kid = 0; kid < block["children"].length; kid++) {
-      flarify(block["children"][kid]);
-      block["size"] += block["children"][kid]["size"];
-    }
-  }
-  else {
-    block["size"] = block["_amount"];
-    delete block["_amount"];
-  }
-
-  for (key in block) {
-    if (properties.indexOf(key) > -1) {
-      continue;
-    }
-    else {
-      delete block[key];
-    }
-  }
-}
-
-/* Function matches URLs supplied by the memory reporters to the tab names from
- * the 'tabs' object, for easier identification.
- *
- * The 'id' part of the name is included to maintain uniqueness of each tab.*/
-
-function fixTab(t){
-  var a;
-  for each (let tab in tabs) {
-    let tabInfo = t.split(/, /);
-    if(tab.url.replace(/\//g, '\\') == tabInfo[0]) {
-      a = tab.title + ", " + tabInfo[1];
-      break;
-    }
-    else
-      a = null;
-  }
-  return a;
-}
-
-/* This function will be called once for each entry from the
- * multi-reporters. aUnsafePath has the full name, and
- * if aUnits == 0 it means the amount is in bytes. (this is the only
- * one that is relevant for us)*/
-
-function oneReport(aProcess, aUnsafePath, aKind, aUnits, aAmount, aDescription) {
-    
-  if (aUnits != 0) {
-    return;
-  }
-
-  var regExp = aUnsafePath.match(/top\(([^)]+)/);
-
-  if (regExp) {
-    var tabUrl = regExp[1];
-    if (tabCollector[tabUrl]) {
-      tabCollector[tabUrl] += aAmount;
-    } 
-    else {
-      tabCollector[tabUrl] = aAmount;
-    }
-  }
-}
-
-// Callback function for generating tree from pCollsByProcess
-function processCallback(a, b, c) {
-  processMemoryReporters(a,b,c);
-}
-
-// Function called when the registered URL 'about:stats' is opened 
-function onStatsPageOpened(tab) {
-  log("Stats Page Opened");
-
-  let styleCss = data.url("stats.css");
-  tab.attach({
-    contentScriptFile: data.url("stats.js"),
-    contentScript: "populate('" + escape(styleCss) + "','" + escape(statsFullName) + "','" + escape(statsTagLine) + "');",
-  });
-
-  var worker = tab.attach({
-    contentScriptFile: [data.url("d3.v3.js"), data.url("visualizr.js")],
-    onMessage: function () {
-      processTabs();
-      processInternals();
-      log("Sending first block...");
-      worker.port.emit('first_block', transmission);
-      log("Sent first block.");
-      transmission = {};
-    }
-  });
-  
-  worker.port.on('sheep_block_request', function () {
-    processTabs();
-    log("Sending sheep block...");
-    worker.port.emit('sheep_block', transmission);
-    log("Sent sheeep block.");
-    transmission = {};
-  });
-
-  worker.port.on('internals_block_request', function () {
-    processInternals();
-    log("Sending internals block...");
-    worker.port.emit('internals_block', transmission);
-    log("Sent internals block.");
-    transmission = {};
-  });
-}
-
-// Load the about:stats url in the address bar
-function loadStatsPage() {
-  tabs.open({
-    url: aboutStatsUrl,
-    onReady: log("Via loadStatsPage.") // We don't need to actually *do* anything, statsOnDemand will be invoked by the URL
-  });
-}
-
-// Function called to check if the URL entered in the address bar is the target URL
-function statsOnDemand(tab) {
-  if (tab.url.toLowerCase() == aboutStatsUrl) {
-    log("Via statsOnDemand");
-    onStatsPageOpened(tab);
-  }
-}
-
-tabs.on('ready',statsOnDemand);
-
-// Try to load the page log success, or errors (if any)
-try {
-  require('about').add({what: 'stats', url: data.url("stats.html")});
-  toolbarButton.moveTo({
-    toolbarID: "nav-bar",
-    forceMove: true
-  });
-  log("All good!");
-}
-catch(err) {
-  log(err);
-}
-
-/* The large dump of the entire memory tree needed to borrow some methods from
- * about:memory, but there were some problems with exporting the module externally.
-
- * Hence, this is the entire about:memory code to support extraction of the memory
- * tree, with some DOM interfacing sections muted*/
-
-// TODO This is not elegent, at all. A better solution should be found.
+"use strict";
 
 //---------------------------------------------------------------------------
-//---------------------------------------------------------------------------
-
 // Code shared by about:memory and about:compartments
+//---------------------------------------------------------------------------
+
+const Cc = Components.classes;
+const Ci = Components.interfaces;
+const Cu = Components.utils;
+const CC = Components.Constructor;
 
 const KIND_NONHEAP           = Ci.nsIMemoryReporter.KIND_NONHEAP;
 const KIND_HEAP              = Ci.nsIMemoryReporter.KIND_HEAP;
@@ -351,9 +60,9 @@ let gUnnamedProcessStr = "Main Process";
 let gIsDiff = false;
 
 {
-  let split;// = document.location.href.split('?');
+  let split = document.location.href.split('?');
   // The toLowerCase() calls ensure that addresses like "ABOUT:MEMORY" work.
-  //document.title = split[0].toLowerCase();
+  document.title = split[0].toLowerCase();
 }
 
 let gChildMemoryListener = undefined;
@@ -977,7 +686,7 @@ function loadMemoryReportsFromFile(aFilename, aFn)
       },
       onStopRequest: function(aR, aC, aStatusCode) {
         try {
-          if (!components.isSuccessCode(aStatusCode)) {
+          if (!Components.isSuccessCode(aStatusCode)) {
             throw aStatusCode;
           }
           reader.readAsText(new Blob(this.data));
@@ -1044,7 +753,7 @@ function updateAboutMemoryFromClipboard()
 {
   // Get the clipboard's contents.
   let cb = Cc["@mozilla.org/widget/clipboard;1"].
-           getService(components.interfaces.nsIClipboard);
+           getService(Components.interfaces.nsIClipboard);
   let transferable = Cc["@mozilla.org/widget/transferable;1"]
                        .createInstance(Ci.nsITransferable);
   let loadContext = window.QueryInterface(Ci.nsIInterfaceRequestor)
@@ -1377,7 +1086,7 @@ function getPCollsByProcess(aProcessMemoryReports, aForceShowSmaps)
 
   function ignoreMulti(aMRName)
   {
-    return (aMRName === "smaps" && !aForceShowSmaps) ||
+    return (aMRName === "smaps" && !gVerbose.checked && !aForceShowSmaps) ||
             aMRName === "compartments" ||
             aMRName === "ghost-windows";
   }

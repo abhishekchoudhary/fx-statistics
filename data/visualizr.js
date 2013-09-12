@@ -1,3 +1,10 @@
+/* -*- Mode: js2; tab-width: 8; indent-tabs-mode: nil; js2-basic-offset: 2 -*-*/
+/* vim: set ts=8 sts=2 et sw=2 tw=80: */
+/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
 /** Pre-requisites for the addon
   * Constants and Data Structures
 ***/
@@ -59,6 +66,7 @@ let liveUpdate = true,
     internalsButtonValSet = [{text: "Remove Browser's Internal Statistics", title: "Should I remove the browser's internal statistics?"},
                              {text: "Show Browser's Internal Statistics", title:"Should I show the browser's internal statistics?"}];
 
+// Defining all handler objects for D3
 var pieData = [],
     oldPieData = [],
     otherPieData = [];
@@ -118,6 +126,7 @@ var totalUnits = centerGroup.append("svg:text")
   .text("Bytes");
 
 var vis2 = undefined,
+    svg = undefined,
     otherCenterGroup = undefined,
     otherPaths = undefined,
     otherWhiteCircle = undefined,
@@ -125,16 +134,25 @@ var vis2 = undefined,
     otherTotalValue = undefined,
     otherTotalUnits = undefined;
 
+// Logging function for debugging
 function log(message) {
   if(debugging)
-    console.log(message);
+    console.log(JSON.stringify(message));
 }
 
 function collect(transmission) {
-  version = transmission.version,                                                                 // Collect browser version from transmission
-  memData = transmission.memdata,                                                                 // Collect single-reporter data from transmission
-  explicitTree = transmission.explicitTree,
-  tabData = transmission.tabdata;                                                                 // Collect multi-reporter data from transmission
+  if(!!transmission.version)
+    version = transmission.version;                                                                 // Collect browser version from transmission
+  if(!!transmission.memdata)
+    memData = transmission.memdata;                                                                 // Collect single-reporter data from transmission
+  if(!!transmission.memtotal)
+    memTotal = transmission.memtotal;
+  if(!!transmission.explicitTree)
+    explicitTree = transmission.explicitTree;
+  if(!!transmission.tabdata)
+    tabData = transmission.tabdata;                                                                 // Collect multi-reporter data from transmission
+  if(!!transmission.tabtotal)
+    tabTotal = transmission.tabtotal;
 }
 
 function flipUpdateButton() {
@@ -212,7 +230,7 @@ function initializePage() {
 
   internalsButton = d3.select("#wrapper")
     .append("button")
-    .attr("style", "width:250px;height:50px")
+    .attr("style", "right:85px;width:250px;height:50px")
     .text(internalsButtonState().text)
     .attr("title", internalsButtonState().title)
     .on("click", function () {
@@ -237,6 +255,14 @@ function prepareSecondVis() {
   vis2 = d3.select("#wrapper").append("svg:svg")
     .attr("width", width)
     .attr("height", height);
+  
+  remeasureInternalsButton = d3.select("#wrapper")
+    .append("button")
+    .attr("style", "position:absolute;right:385px;width:250px;height:50px")
+    .text("Refresh Internals")
+    .on("click", function() {
+      self.port.emit('internals_block_request','1');
+    });
 
   makeInternalPie();
   makeInternalSunburst();
@@ -244,6 +270,8 @@ function prepareSecondVis() {
 
 function removeSecondVis() {
   vis2.remove();
+  svg.remove();
+  remeasureInternalsButton.remove();
 }
 
 function makeInternalPie() {
@@ -274,6 +302,11 @@ function makeInternalPie() {
     .attr("dy", 7)
     .attr("text-anchor", "middle") // text-align: right
     .text("Waiting...");
+
+  otherTotalValue.text(function(){
+    var kb = memTotal/1024;
+    return kb.toFixed(2);
+  });
 
   otherTotalUnits = otherCenterGroup.append("svg:text")
     .attr("class", "units")
@@ -313,7 +346,7 @@ var arc = d3.svg.arc()
     .innerRadius(function(d) { return d.y; })
     .outerRadius(function(d) { return d.y + d.dy; }); 
 
-var svg = d3.select("body").append("svg:svg")
+  svg = d3.select("body").append("svg:svg")
     .attr("width", w)
     .attr("height", h)
   .append("svg:g")
@@ -408,11 +441,11 @@ function mouseover() {
 }
 
 function mousemove() {
-    div
-      .html("<b>" + this.__data__.data.name + "</b><br/>" + (this.__data__.data.size/1024).toFixed(3) + " kb")
-      .style("width", 30+10*this.__data__.data.name.length + "px")
-      .style("left", (d3.event.pageX) + "px")
-      .style("top", (d3.event.pageY) + "px");
+  div
+    .html("<b>" + this.__data__.data.name + "</b><br/>" + (this.__data__.data.size/1024).toFixed(3) + " kb")
+    .style("width", 30+10*this.__data__.data.name.length + "px")
+    .style("left", (d3.event.pageX) + "px")
+    .style("top", (d3.event.pageY) + "px");
 }
 
 function mouseout() {
@@ -433,10 +466,10 @@ self.port.on('first_block', function(transmission) {                            
 function draw() {
   arcGroup.selectAll("circle").remove();
 
-    /*totalValue.text(function(){
-      var byt = totalOctets/1024;
+    totalValue.text(function(){
+      var kb = tabTotal/1024;
       return kb.toFixed(2);
-    });*/
+    });
 
   paths = arcGroup.selectAll("path").data(pieData);
 
@@ -463,16 +496,6 @@ function draw() {
     .remove();  
 }
 
-  /*morearcs.append("svg:text")
-    .attr("transform", function(d) {
-      d.innerRadius = innerRad;
-      d.outerRadius = rad;
-      return "translate(" + arc.centroid(d) + ")";
-    })
-    .attr("text-anchor","middle")
-    .text(function(block, i) {return tabData[i].path});*/
-
-
 self.port.on('sheep_block', function(transmission) {
   inputBuffer.set(inputBuffer.length,transmission);
   setSlider();
@@ -480,4 +503,10 @@ self.port.on('sheep_block', function(transmission) {
   oldPieData = pieData;
   pieData = donut(tabData);
   draw();
+});
+
+self.port.on('internals_block', function(transmission) {
+  collect(transmission);
+  removeSecondVis();
+  prepareSecondVis();
 });
