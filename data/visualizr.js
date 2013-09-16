@@ -273,7 +273,7 @@ function initializePage() {
       }
     });
 
-  // Link to about:memory as source of data
+  // Credit links
   d3.select("#finisher")
     .append("a")
     .attr("href","about:memory")
@@ -281,6 +281,26 @@ function initializePage() {
     .style("font-size","15px")
     .style("font-style","italic")
     .text("Where do you get your data from?");
+
+  d3.select("#finisher")
+    .append("p")
+    .text("Lots of credit to Mike Bostock's amazing ")
+      .append("a")
+      .attr("href","http://d3js.org")
+      .attr("target","_blank")
+      .style("font-size","15px")
+      .style("font-style","italic")
+      .text("D3");
+
+    d3.select("#finisher")
+      .append("p")
+      .text("Peek at / swear about / contribute to the code ")
+        .append("a")
+        .attr("href","https://github.com/abhishekchoudhary/fx-statistics")
+        .attr("target","_blank")
+        .style("font-size","15px")
+        .style("font-style","italic")
+        .text("here");
 }
 
 // Function to load secondary visuals when requested
