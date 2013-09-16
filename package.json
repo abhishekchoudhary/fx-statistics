@@ -3,9 +3,9 @@
   "fullName": "fx-statistics",
   "dependencies":["about","addon-sdk","toolbarbutton"],
   "id": "jid1-jnK9rw3l4bxjZQ",
-  "description": "Browser statistics that you can actually understand.",
+  "description": "Browser statistics that make sense.",
   "permissions": {"private-browsing": true},
   "author": "Abhishek Choudhary",
   "license": "MPL 2.0",
-  "version": "0.1"
+  "version": "0.8"
 }
