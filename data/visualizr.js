@@ -140,7 +140,7 @@ var totalUnits = centerGroup.append("svg:text")
   .attr("class", "units")
   .attr("dy", 21)
   .attr("text-anchor", "middle")
-  .text("Bytes");
+  .text("Kilobytes");
 
 // The secondary visual is pulled on request, so they don't need any initial values
 var vis2 = undefined,
@@ -366,7 +366,7 @@ function makeInternalPie() {
     .attr("class", "units")
     .attr("dy", 21)
     .attr("text-anchor", "middle") // text-align: right
-    .text("Bytes");
+    .text("Kilobytes");
 
   otherPieData = donut(memData);
 
