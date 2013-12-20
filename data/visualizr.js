@@ -259,7 +259,7 @@ function initializePage() {
     .attr("class","tooltip")
     .style("opacity",1e-6);
 
-  internalsButton = d3.select("#wrapper")
+  /*internalsButton = d3.select("#wrapper")
     .append("button")
     .attr("style", "right:85px;width:250px;height:50px")
     .text(internalsButtonState().text)
@@ -273,6 +273,7 @@ function initializePage() {
       }
     });
 
+  */
   // Credit links
   d3.select("#finisher")
     .append("a")
@@ -317,8 +318,8 @@ function prepareSecondVis() {
       self.port.emit('internals_block_request','1');
     });
 
-  makeInternalPie();
-  makeInternalSunburst();
+  //makeInternalPie();
+  //makeInternalSunburst();
 }
 
 // Fucntion to remove secondary visuals when requested
